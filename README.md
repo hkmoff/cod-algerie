@@ -77,3 +77,5 @@ npx wrangler pages deploy dist
 - Créer une première boutique de test dans la table `shops` (avec ses identifiants Yalidine dans `shop_courier_credentials`)
 - Brancher le routing multi-boutique (sous-domaine → shop_id) dans `worker/src/index.ts`
 - Écran back-office vendeur (liste des commandes, statistiques)
+
+- 
