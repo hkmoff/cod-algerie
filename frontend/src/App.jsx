@@ -8,26 +8,33 @@ export default function App() {
   const [shop, setShop] = useState(null);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
     if (!DEMO_SHOP_ID) {
       setLoading(false);
+      setDebugInfo("VITE_DEMO_SHOP_ID n'est pas défini dans ce build (variable vide ou absente).");
       return;
     }
     async function load() {
-      const { data: shopData } = await supabase
+      const { data: shopData, error: shopError } = await supabase
         .from("shops")
         .select("id, name, logo_url")
         .eq("id", DEMO_SHOP_ID)
-        .single();
+        .maybeSingle();
 
-      const { data: productData } = await supabase
+      const { data: productData, error: productError } = await supabase
         .from("products")
         .select("id, name, description, price, compare_at_price, images")
         .eq("shop_id", DEMO_SHOP_ID)
         .eq("status", "active")
         .limit(1)
         .maybeSingle();
+
+      if (shopError) setDebugInfo(`Erreur Supabase (boutique) : ${shopError.message}`);
+      else if (productError) setDebugInfo(`Erreur Supabase (produit) : ${productError.message}`);
+      else if (!shopData) setDebugInfo(`Aucune boutique trouvée pour l'id "${DEMO_SHOP_ID}".`);
+      else if (!productData) setDebugInfo(`Boutique "${shopData.name}" trouvée, mais aucun produit actif dessus.`);
 
       setShop(shopData ?? null);
       setProduct(productData ?? null);
@@ -43,13 +50,16 @@ export default function App() {
   if (!DEMO_SHOP_ID || !shop || !product) {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center">
-        <div className="max-w-sm">
+        <div className="max-w-md">
           <div className="font-heading font-bold text-lg text-ink mb-2">
             Aucune boutique à afficher
           </div>
-          <p className="text-muted text-sm">
-            Renseigne VITE_DEMO_SHOP_ID dans le fichier .env avec l'identifiant
-            d'une boutique existante ayant au moins un produit actif.
+          <p className="text-muted text-sm mb-4">
+            Renseigne VITE_DEMO_SHOP_ID avec l'identifiant d'une boutique
+            existante ayant au moins un produit actif.
+          </p>
+          <p className="text-xs text-accent bg-surface rounded-lg px-3 py-2 break-all">
+            {debugInfo}
           </p>
         </div>
       </div>
