@@ -69,12 +69,15 @@ export default function OrderForm({ shopId, product }) {
         delivery_mode: deliveryMode,
       }),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error();
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Erreur ${res.status}`);
+        }
         return res.json();
       })
       .then((data) => setRate(data))
-      .catch(() => setRateError("Impossible de calculer le frais de livraison pour le moment."))
+      .catch((err) => setRateError(err.message || "Impossible de calculer le frais de livraison pour le moment."))
       .finally(() => setRateLoading(false));
   }, [wilayaCode, deliveryMode, shopId]);
 
