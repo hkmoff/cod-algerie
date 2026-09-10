@@ -1,0 +1,13 @@
+name = "cod-algerie-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Les secrets (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) se définissent avec :
+#   npx wrangler secret put SUPABASE_URL
+#   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# Jamais en clair ici.
+
+# Décommenter et adapter une fois le domaine choisi :
+# [[routes]]
+# pattern = "*.tondomaine.com/api/*"
+# zone_name = "tondomaine.com"
