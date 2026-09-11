@@ -6,9 +6,15 @@
  * commande) se fait directement depuis le frontend vers Supabase, protégé
  * par les policies RLS déjà en place.
  *
- * Route :
- *   POST /api/rate   → calcule le frais de livraison réel pour une commande
+ * Utilise le client officiel "dzship" (npm) plutôt que des appels HTTP
+ * écrits à la main — gestion d'erreurs typée et limites intégrées.
+ *
+ * Routes :
+ *   POST /api/rate    → calcule le frais de livraison réel pour une commande
+ *   POST /api/ship     → crée le colis chez le transporteur (confirmation vendeur)
+ *   GET  /api/track     → suit un colis par son numéro
  */
+import dzship, { DzshipError } from "dzship";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -17,7 +23,7 @@ export interface Env {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -28,10 +34,7 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-async function supabaseRest(
-  env: Env,
-  path: string,
-): Promise<any> {
+async function supabaseRest(env: Env, path: string): Promise<any> {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
@@ -44,6 +47,44 @@ async function supabaseRest(
   return res.json();
 }
 
+/** Construit le client dzship pour une boutique donnée, à partir de ses
+ * identifiants transporteur stockés dans Supabase. */
+async function clientForShop(env: Env, shopId: string) {
+  const shops = await supabaseRest(
+    env,
+    `shops?id=eq.${shopId}&select=origin_wilaya_code`,
+  );
+  if (!shops.length || !shops[0].origin_wilaya_code) {
+    throw json({ error: "Boutique introuvable ou wilaya d'origine non configurée" }, 404);
+  }
+  const fromWilaya = shops[0].origin_wilaya_code;
+
+  const creds = await supabaseRest(
+    env,
+    `shop_courier_credentials?shop_id=eq.${shopId}&select=courier,api_id,api_token`,
+  );
+  if (!creds.length) {
+    throw json({ error: "Aucun transporteur connecté pour cette boutique" }, 404);
+  }
+  const { courier, api_id, api_token } = creds[0];
+
+  return dzship({
+    courier,
+    credentials: { apiId: api_id, apiToken: api_token },
+    options: { fromWilaya },
+  });
+}
+
+/** Traduit une DzshipError en réponse HTTP claire pour le frontend. */
+function dzshipErrorResponse(err: unknown): Response {
+  if (err instanceof Response) return err; // déjà une réponse (ex: boutique introuvable)
+  if (err instanceof DzshipError) {
+    const status = err.code === "rate_limited" ? 429 : err.status || 502;
+    return json({ error: err.message, code: err.code, fields: err.fields }, status);
+  }
+  return json({ error: (err as Error).message ?? "Erreur inconnue" }, 500);
+}
+
 interface RateRequestBody {
   shop_id: string;
   wilaya_code: number;
@@ -51,66 +92,53 @@ interface RateRequestBody {
 }
 
 async function handleRate(request: Request, env: Env): Promise<Response> {
-  let body: RateRequestBody;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "JSON invalide" }, 400);
-  }
-
+  const body: RateRequestBody = await request.json();
   const { shop_id, wilaya_code, delivery_mode } = body;
   if (!shop_id || !wilaya_code || !delivery_mode) {
-    return json(
-      { error: "shop_id, wilaya_code et delivery_mode sont requis" },
-      400,
-    );
+    return json({ error: "shop_id, wilaya_code et delivery_mode sont requis" }, 400);
   }
 
-  // 1. Boutique : wilaya d'origine (public, mais on le lit ici pour rester
-  //    dans un seul aller-retour serveur)
-  const shops = await supabaseRest(
-    env,
-    `shops?id=eq.${shop_id}&select=origin_wilaya_code`,
-  );
-  if (!shops.length || !shops[0].origin_wilaya_code) {
-    return json({ error: "Boutique introuvable ou wilaya d'origine non configurée" }, 404);
-  }
-  const fromWilaya = shops[0].origin_wilaya_code;
+  const client = await clientForShop(env, shop_id);
+  const quote = await client.rates({ toWilaya: wilaya_code, deliveryType: delivery_mode });
 
-  // 2. Identifiants transporteur de cette boutique (jamais exposés au client)
-  const creds = await supabaseRest(
-    env,
-    `shop_courier_credentials?shop_id=eq.${shop_id}&select=courier,api_id,api_token`,
-  );
-  if (!creds.length) {
-    return json(
-      { error: "Aucun transporteur connecté pour cette boutique" },
-      404,
-    );
-  }
-  const { courier, api_id, api_token } = creds[0];
-
-  // 3. Appel dzship (agrégateur transporteurs, gratuit, sans clé propre)
-  const rateRes = await fetch("https://freeship.dzbuild.com/v1/rates", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      courier,
-      credentials: { apiId: api_id, apiToken: api_token },
-      query: { fromWilaya, toWilaya: wilaya_code, deliveryType: delivery_mode },
-    }),
-  });
-
-  if (!rateRes.ok) {
-    return json({ error: "Le transporteur n'a pas pu être contacté" }, 502);
-  }
-
-  const rate = await rateRes.json();
   return json({
-    deliveryFee: rate.deliveryFee,
-    returnFee: rate.returnFee,
-    currency: rate.currency ?? "DZD",
+    deliveryFee: quote.deliveryFee,
+    returnFee: quote.returnFee,
+    currency: quote.currency ?? "DZD",
   });
+}
+
+interface ShipRequestBody {
+  shop_id: string;
+  recipient: { fullName: string; phone: string; wilayaCode: number; communeName: string };
+  deliveryType: "home" | "stopdesk";
+  productList: string;
+  codAmount: number;
+}
+
+async function handleShip(request: Request, env: Env): Promise<Response> {
+  const body: ShipRequestBody = await request.json();
+  const { shop_id, ...order } = body;
+  if (!shop_id) return json({ error: "shop_id est requis" }, 400);
+
+  const client = await clientForShop(env, shop_id);
+  const { trackingNumber } = await client.createOrder(order);
+
+  return json({ trackingNumber });
+}
+
+async function handleTrack(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const shopId = url.searchParams.get("shop_id");
+  const trackingNumber = url.searchParams.get("tracking_number");
+  if (!shopId || !trackingNumber) {
+    return json({ error: "shop_id et tracking_number sont requis" }, 400);
+  }
+
+  const client = await clientForShop(env, shopId);
+  const { status, events } = await client.track(trackingNumber);
+
+  return json({ status, events });
 }
 
 export default {
@@ -121,12 +149,18 @@ export default {
 
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/rate" && request.method === "POST") {
-      try {
+    try {
+      if (url.pathname === "/api/rate" && request.method === "POST") {
         return await handleRate(request, env);
-      } catch (err) {
-        return json({ error: (err as Error).message }, 500);
       }
+      if (url.pathname === "/api/ship" && request.method === "POST") {
+        return await handleShip(request, env);
+      }
+      if (url.pathname === "/api/track" && request.method === "GET") {
+        return await handleTrack(request, env);
+      }
+    } catch (err) {
+      return dzshipErrorResponse(err);
     }
 
     return json({ error: "Not found" }, 404);
