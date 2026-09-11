@@ -78,4 +78,6 @@ npx wrangler pages deploy dist
 - Brancher le routing multi-boutique (sous-domaine → shop_id) dans `worker/src/index.ts`
 - Écran back-office vendeur (liste des commandes, statistiques)
 
-- 
+
+
+
