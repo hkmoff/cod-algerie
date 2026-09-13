@@ -98,14 +98,44 @@ async function handleRate(request: Request, env: Env): Promise<Response> {
     return json({ error: "shop_id, wilaya_code et delivery_mode sont requis" }, 400);
   }
 
-  const client = await clientForShop(env, shop_id);
-  const quote = await client.rates({ toWilaya: wilaya_code, deliveryType: delivery_mode });
+  // 1. Un transporteur est connecté : tarif réel en direct
+  const creds = await supabaseRest(
+    env,
+    `shop_courier_credentials?shop_id=eq.${shop_id}&select=courier,api_id,api_token`,
+  );
 
-  return json({
-    deliveryFee: quote.deliveryFee,
-    returnFee: quote.returnFee,
-    currency: quote.currency ?? "DZD",
-  });
+  if (creds.length) {
+    const shops = await supabaseRest(env, `shops?id=eq.${shop_id}&select=origin_wilaya_code`);
+    const fromWilaya = shops[0]?.origin_wilaya_code;
+    const { courier, api_id, api_token } = creds[0];
+
+    const client = dzship({
+      courier,
+      credentials: { apiId: api_id, apiToken: api_token },
+      options: { fromWilaya },
+    });
+    const quote = await client.rates({ toWilaya: wilaya_code, deliveryType: delivery_mode });
+
+    return json({
+      deliveryFee: quote.deliveryFee,
+      returnFee: quote.returnFee,
+      currency: quote.currency ?? "DZD",
+      source: "live",
+    });
+  }
+
+  // 2. Pas de transporteur : on retombe sur la grille manuelle du vendeur
+  const rates = await supabaseRest(
+    env,
+    `shop_delivery_rates?shop_id=eq.${shop_id}&wilaya_code=eq.${wilaya_code}&select=home_fee,stopdesk_fee`,
+  );
+  const fee = rates[0] && (delivery_mode === "stopdesk" ? rates[0].stopdesk_fee : rates[0].home_fee);
+
+  if (fee == null) {
+    return json({ error: "Aucun tarif configuré pour cette wilaya" }, 404);
+  }
+
+  return json({ deliveryFee: fee, returnFee: 0, currency: "DZD", source: "manual" });
 }
 
 interface ShipRequestBody {
