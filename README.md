@@ -79,4 +79,3 @@ npx wrangler pages deploy dist
 - Écran back-office vendeur (liste des commandes, statistiques)
 
 
-
