@@ -4,12 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: "#23262B",
-        surface: "#2C3038",
-        ink: "#F5F5F0",
-        muted: "#9A9DA6",
-        accent: "#D4FF3D",
-        "accent-ink": "#1A1C1F",
+        canvas: "rgb(var(--canvas) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        accent: "rgb(var(--accent) / <alpha-value>)",
+        "accent-ink": "rgb(var(--accent-ink) / <alpha-value>)",
       },
       fontFamily: {
         heading: ["Plus Jakarta Sans", "sans-serif"],
