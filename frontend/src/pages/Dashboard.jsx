@@ -115,6 +115,11 @@ export default function Dashboard() {
   const traitees = orders.filter((o) => o.status !== "en_attente").length;
   const confirmees = orders.filter((o) => o.status !== "en_attente" && o.status !== "annulee").length;
   const tauxConfirmation = traitees ? Math.round((confirmees / traitees) * 100) : 0;
+  const shopLink = `${window.location.origin}/s/${shop.subdomain}`;
+
+  function copyLink() {
+    navigator.clipboard.writeText(shopLink);
+  }
 
   return (
     <div className="min-h-screen px-4 py-6 max-w-4xl mx-auto">
@@ -136,19 +141,11 @@ export default function Dashboard() {
       <div className="bg-surface rounded-card p-4 mb-4 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <div className="text-xs text-muted mb-1">Adresse de ta boutique</div>
-          
-            href={`/s/${shop.subdomain}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-accent break-all hover:underline"
-          >
-            {window.location.origin}/s/{shop.subdomain}
+          <a href={`/s/${shop.subdomain}`} target="_blank" rel="noreferrer" className="text-sm text-accent break-all hover:underline">
+            {shopLink}
           </a>
         </div>
-        <button
-          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/s/${shop.subdomain}`)}
-          className="text-xs px-3 py-2 rounded-lg bg-white/5 text-muted hover:bg-white/10"
-        >
+        <button onClick={copyLink} className="text-xs px-3 py-2 rounded-lg bg-white/5 text-muted hover:bg-white/10">
           Copier le lien
         </button>
       </div>
