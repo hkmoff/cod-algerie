@@ -1,70 +1,81 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import OrderForm from "./components/OrderForm";
 import { applyTheme } from "./lib/themes";
 
+// Boutique affichée par défaut sur la racine "/" (utile pour une démo).
 const DEMO_SHOP_ID = import.meta.env.VITE_DEMO_SHOP_ID;
 
 export default function App() {
+  const { subdomain } = useParams(); // présent sur /s/:subdomain
   const [shop, setShop] = useState(null);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
-    if (!DEMO_SHOP_ID) {
-      setLoading(false);
-      setDebugInfo("VITE_DEMO_SHOP_ID n'est pas défini dans ce build (variable vide ou absente).");
-      return;
-    }
     async function load() {
-      const { data: shopData, error: shopError } = await supabase
+      // La boutique se trouve soit par son sous-domaine (dans l'URL), soit
+      // par l'id de démo quand on est sur la racine du site.
+      let query = supabase
         .from("shops")
         .select("id, name, logo_url, theme, accent_color")
-        .eq("id", DEMO_SHOP_ID)
-        .maybeSingle();
+        .eq("status", "active");
 
-      if (shopData) {
-        applyTheme(shopData.theme, shopData.accent_color);
+      query = subdomain ? query.eq("subdomain", subdomain) : query.eq("id", DEMO_SHOP_ID);
+
+      const { data: shopData } = await query.maybeSingle();
+
+      if (!shopData) {
+        setLoading(false);
+        return;
       }
 
-      const { data: productData, error: productError } = await supabase
+      applyTheme(shopData.theme, shopData.accent_color);
+
+      const { data: productData } = await supabase
         .from("products")
         .select("id, name, description, price, compare_at_price, images")
-        .eq("shop_id", DEMO_SHOP_ID)
+        .eq("shop_id", shopData.id)
         .eq("status", "active")
         .limit(1)
         .maybeSingle();
 
-      if (shopError) setDebugInfo(`Erreur Supabase (boutique) : ${shopError.message}`);
-      else if (productError) setDebugInfo(`Erreur Supabase (produit) : ${productError.message}`);
-      else if (!shopData) setDebugInfo(`Aucune boutique trouvée pour l'id "${DEMO_SHOP_ID}".`);
-      else if (!productData) setDebugInfo(`Boutique "${shopData.name}" trouvée, mais aucun produit actif dessus.`);
-
-      setShop(shopData ?? null);
+      setShop(shopData);
       setProduct(productData ?? null);
       setLoading(false);
     }
     load();
-  }, []);
+  }, [subdomain]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted text-sm">Chargement...</div>;
   }
 
-  if (!DEMO_SHOP_ID || !shop || !product) {
+  if (!shop) {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center">
-        <div className="max-w-md">
+        <div className="max-w-sm">
           <div className="font-heading font-bold text-lg text-ink mb-2">
-            Aucune boutique à afficher
+            Boutique introuvable
           </div>
-          <p className="text-muted text-sm mb-4">
-            Renseigne VITE_DEMO_SHOP_ID avec l'identifiant d'une boutique
-            existante ayant au moins un produit actif.
+          <p className="text-muted text-sm">
+            Cette boutique n'existe pas ou n'est pas encore active.
           </p>
-          <p className="text-xs text-accent bg-surface rounded-lg px-3 py-2 break-all">
-            {debugInfo}
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center">
+        <div className="max-w-sm">
+          <div className="font-heading font-bold text-lg text-ink mb-2">
+            {shop.name}
+          </div>
+          <p className="text-muted text-sm">
+            Aucun produit disponible pour le moment.
           </p>
         </div>
       </div>
