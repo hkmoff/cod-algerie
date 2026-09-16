@@ -32,7 +32,7 @@ export default function Products() {
 
     const { data: shopData } = await supabase
       .from("shops")
-      .select("id, name")
+      .select("id, name, status")
       .eq("owner_id", sessionData.session.user.id)
       .maybeSingle();
 
@@ -41,6 +41,11 @@ export default function Products() {
       return;
     }
     setShop(shopData);
+
+    if (shopData.status !== "active") {
+      setLoading(false);
+      return;
+    }
 
     const { data: productsData } = await supabase
       .from("products")
@@ -114,6 +119,23 @@ export default function Products() {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center text-muted text-sm">
         Aucune boutique associée à ce compte.
+      </div>
+    );
+  }
+
+  if (shop.status !== "active") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center">
+        <div className="max-w-sm bg-surface rounded-card p-6">
+          <div className="font-heading font-bold text-lg text-ink mb-2">
+            {shop.status === "pending" ? "En attente de validation" : "Boutique suspendue"}
+          </div>
+          <p className="text-sm text-muted">
+            {shop.status === "pending"
+              ? "Un administrateur doit approuver ta boutique avant que tu puisses gérer tes produits."
+              : "Contacte l'administrateur de la plateforme pour plus d'informations."}
+          </p>
+        </div>
       </div>
     );
   }
