@@ -132,6 +132,7 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
       <div className="bg-surface rounded-card p-4 mb-4 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <div className="text-xs text-muted mb-1">Adresse de ta boutique</div>
@@ -151,6 +152,7 @@ export default function Dashboard() {
           Copier le lien
         </button>
       </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-surface rounded-card p-4">
           <div className="text-xs text-muted mb-1">CA total</div>
