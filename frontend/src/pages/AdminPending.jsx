@@ -48,6 +48,11 @@ export default function AdminPending() {
     loadData();
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/dashboard/login");
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted text-sm">Chargement...</div>;
   }
@@ -65,8 +70,13 @@ export default function AdminPending() {
 
   return (
     <div className="min-h-screen px-4 py-6 max-w-3xl mx-auto">
-      <div className="font-heading font-bold text-ink mb-6">
-        Administration<span className="text-accent">.</span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="font-heading font-bold text-ink">
+          Administration<span className="text-accent">.</span>
+        </div>
+        <button onClick={handleLogout} className="text-xs text-muted hover:text-ink">
+          Déconnexion
+        </button>
       </div>
 
       <div className="text-sm font-heading font-bold text-ink mb-3">
