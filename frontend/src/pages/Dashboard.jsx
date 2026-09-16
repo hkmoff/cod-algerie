@@ -36,7 +36,7 @@ export default function Dashboard() {
 
     const { data: shopData } = await supabase
       .from("shops")
-      .select("id, name, status")
+      .select("id, name, status, subdomain")
       .eq("owner_id", sessionData.session.user.id)
       .maybeSingle();
 
@@ -132,7 +132,25 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-
+      <div className="bg-surface rounded-card p-4 mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-xs text-muted mb-1">Adresse de ta boutique</div>
+          
+            href={`/s/${shop.subdomain}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-accent break-all hover:underline"
+          >
+            {window.location.origin}/s/{shop.subdomain}
+          </a>
+        </div>
+        <button
+          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/s/${shop.subdomain}`)}
+          className="text-xs px-3 py-2 rounded-lg bg-white/5 text-muted hover:bg-white/10"
+        >
+          Copier le lien
+        </button>
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-surface rounded-card p-4">
           <div className="text-xs text-muted mb-1">CA total</div>
