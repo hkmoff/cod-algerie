@@ -15,6 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/s/:subdomain" element={<App />} />
         <Route path="/dashboard/login" element={<Login />} />
         <Route path="/dashboard/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
