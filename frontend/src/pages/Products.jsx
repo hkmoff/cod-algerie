@@ -111,6 +111,11 @@ export default function Products() {
     loadData();
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/dashboard/login");
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted text-sm">Chargement...</div>;
   }
@@ -125,7 +130,7 @@ export default function Products() {
 
   if (shop.status !== "active") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
         <div className="max-w-sm bg-surface rounded-card p-6">
           <div className="font-heading font-bold text-lg text-ink mb-2">
             {shop.status === "pending" ? "En attente de validation" : "Boutique suspendue"}
@@ -136,6 +141,9 @@ export default function Products() {
               : "Contacte l'administrateur de la plateforme pour plus d'informations."}
           </p>
         </div>
+        <button onClick={handleLogout} className="text-xs text-muted hover:text-ink">
+          Déconnexion
+        </button>
       </div>
     );
   }
