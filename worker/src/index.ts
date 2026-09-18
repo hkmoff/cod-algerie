@@ -42,7 +42,8 @@ async function supabaseRest(env: Env, path: string): Promise<any> {
     },
   });
   if (!res.ok) {
-    throw new Error(`Supabase REST error (${res.status}) on ${path}`);
+    const body = await res.text().catch(() => "");
+    throw new Error(`Supabase REST error (${res.status}) on ${path} — ${body}`);
   }
   return res.json();
 }
