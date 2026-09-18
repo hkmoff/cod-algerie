@@ -15,8 +15,6 @@ export default function App() {
 
   useEffect(() => {
     async function load() {
-      // La boutique se trouve soit par son sous-domaine (dans l'URL), soit
-      // par l'id de démo quand on est sur la racine du site.
       let query = supabase
         .from("shops")
         .select("id, name, logo_url, theme, accent_color")
@@ -91,7 +89,6 @@ export default function App() {
               <img src={shop.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
             )}
             {shop.name}
-            <span className="text-accent">.</span>
           </span>
           <span className="text-xs text-muted bg-surface px-3 py-1 rounded-full">
             58 wilayas
