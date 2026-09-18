@@ -72,7 +72,7 @@ export default function AdminPending() {
     <div className="min-h-screen px-4 py-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="font-heading font-bold text-ink">
-          Administration<span className="text-accent">.</span>
+          Administration
         </div>
         <button onClick={handleLogout} className="text-xs text-muted hover:text-ink">
           Déconnexion
