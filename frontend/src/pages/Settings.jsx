@@ -16,7 +16,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    resetToAdminTheme(); // le back-office reste toujours neutre, même en réglant le thème du site
+    resetToAdminTheme();
     loadData();
   }, []);
 
@@ -116,7 +116,6 @@ export default function Settings() {
       <div className="flex items-center justify-between mb-6">
         <span className="font-heading font-bold text-ink">
           {shop.name}
-          <span className="text-accent">.</span>
         </span>
         <div className="flex items-center gap-4">
           <Link to="/dashboard" className="text-xs text-muted hover:text-ink">Commandes</Link>
